@@ -1,0 +1,11 @@
+property testHelloStr ${tls:testHello()}
+
+accept tcp://localhost:8080
+accepted
+
+
+connected
+
+read ${testHelloStr}
+
+closed
