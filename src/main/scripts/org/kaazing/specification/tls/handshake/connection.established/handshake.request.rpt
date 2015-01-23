@@ -1,58 +1,17 @@
-#property testHelloStr ${tls:testHello()}
-property clientHelloStr ${tls:clientHello()}
-
-
 connect tcp://localhost:8080
 connected
 
-write ${tls:serverHello()}
+# Write "Client Hello"
+# TODO : More granular writing of record/handshake/client hello layers
+# TODO for example ${random} ${sessionId} ${cipherSuite1} ${cipherSuite2} ${compressionMethod1} ${extension1} ${extension2}
+# TODO or methods with parameters ${cipherSuites("TLS_RSA_WITH_RC4_128_SHA", "...", "...")}
+write ${tls:clientHello()}
 
-# TLSv1.2 Record Layer: Handshake Protocol: Client Hello
-# (handshake = 0x16, TLS1.2 = 0x03 0x03 length = 0x00 0xb3)
-#write [0x16 0x03 0x03 0x00 0xb3]
-#   Handshake Protocol : Client Hello 
-#   Handshake type=Client Hello (01), Length=175 (00 00 af) , version = TLS 1.2 (03 03)
-#write [0x01 0x00 0x00 0xaf 0x03 0x03]
-#   Random
-#       GMT unix time
-#write [0x54 0xb9 0x99 0xa2
-#       Random bytes
-#write [0x69 0x09 0xbc 0x4f 0x28 0x54 0x97 0xca 0xe5 0x77 0xb4 0xb0 0x62 0x51 0x25 0x6e
-#write [0xc7 0x3b 0xd8 0x8a 0x6f 0xf9 0xc8 0x7d 0xe1 0x96 0x8d 0xcd]
-#   Sesion ID Length: 0
-#write [0x00]
-#   Cipher Suites Length: 42
-#   Cipher Suites (21 suites)
-#       Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (0xc009)
-#       Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (0xc013)
-#       Cipher Suite: TLS_RSA_WITH_AES_128_CBC_SHA (0x002f)
-#       Cipher Suite: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA (0xc004)
-#       Cipher Suite: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA (0xc00e)
-#       Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA (0x0033)
-#       Cipher Suite: TLS_DHE_DSS_WITH_AES_128_CBC_SHA (0x0032)
-#       Cipher Suite: TLS_ECDHE_ECDSA_WITH_RC4_128_SHA (0xc007)
-#       Cipher Suite: TLS_ECDHE_RSA_WITH_RC4_128_SHA (0xc011)
-#       Cipher Suite: TLS_RSA_WITH_RC4_128_SHA (0x0005)
-#       Cipher Suite: TLS_ECDH_ECDSA_WITH_RC4_128_SHA (0xc002)
-#       Cipher Suite: TLS_ECDH_RSA_WITH_RC4_128_SHA (0xc00c)
-#       Cipher Suite: TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA (0xc008)
-#       Cipher Suite: TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA (0xc012)
-#       Cipher Suite: TLS_RSA_WITH_3DES_EDE_CBC_SHA (0x000a)
-#       Cipher Suite: TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA (0xc003)
-#       Cipher Suite: TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA (0xc00d)
-#       Cipher Suite: TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA (0x0016)
-#       Cipher Suite: TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA (0x0013)
-#       Cipher Suite: TLS_RSA_WITH_RC4_128_MD5 (0x0004)
-#       Cipher Suite: TLS_EMPTY_RENEGOTIATION_INFO_SCSV (0x00ff)
-
-#write [c0 09 c0 13 00 2f c0 04 c0 0e 00 33 00 32 c0 07 c0 11 00 05 c0 02 c0 0c c0 08 c0 12 00 0a c0 03 c0 0d 00 16 00 13 00 04 00 ff]
-
-#   Compression Methods Length: 1
-#write [0x01]
-#   Compression Methods (1 method)
-#       Compression Method: null (0)
-#write [0x00]
-
+# Read "Server Hello, Certificate, Server Hello Done"
+# (handshake = 0x16, TLS1.2 = 0x03 0x03 length = 0x08 0x4f)
+read [0x16 0x03 0x03 0x08 0x4f]
+# TODO verify Server Hello, Certificate, Server Hello Done contents
+read [0..2127]
 
 close
 closed

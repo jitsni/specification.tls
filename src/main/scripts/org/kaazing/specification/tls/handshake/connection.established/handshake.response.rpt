@@ -1,11 +1,18 @@
-property testHelloStr ${tls:testHello()}
-
 accept tcp://localhost:8080
 accepted
 
-
 connected
 
-read ${testHelloStr}
+# Read Client Hello
+# (handshake = 0x16, TLS1.2 = 0x03 0x03 length = 0x00 0x57)
+read [0x16 0x03 0x03 0x00 0x57]
+# TODO verify Client Hello contents
+read [0..87]
+
+# Write "Server Hello, Certificate, Sever Hello Done"
+# TODO : More granular writing of Server Hello, Certificate, Sever Hello Done
+# TODO  for example, certificate("localhost") to write certificate chain
+
+write ${tls:serverHello()}
 
 closed

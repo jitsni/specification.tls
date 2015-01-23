@@ -20,6 +20,7 @@ import org.kaazing.k3po.lang.el.Function;
 import org.kaazing.k3po.lang.el.spi.FunctionMapperSpi;
 
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,6 +28,7 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.CertificateEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class Functions {
@@ -135,7 +137,7 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-
+            readFully(is, new byte[32]);
         }
 
         @Override
@@ -181,6 +183,7 @@ public final class Functions {
         
         @Override
         public void read(InputStream is) throws IOException {
+            readFully(is, new byte[1]);
         }
 
         @Override
@@ -207,7 +210,12 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-            
+            int len = is.read();
+            if (len == 0 || len == 32) {
+                readFully(is, new byte[len]);
+                return;
+            }
+            throw new IOException();
         }
 
         @Override
@@ -314,14 +322,29 @@ public final class Functions {
         
         ClientHello() {
             compressionMethodList.add(CompressionMethod.NULL);
-            for(CipherSuite cipherSuite : CipherSuite.values()) {
-                cipherSuiteList.add(cipherSuite);
-            }
+            Collections.addAll(cipherSuiteList, CipherSuite.values());
         }
 
         @Override
         public void read(InputStream is) throws IOException {
+            readFully(is, new byte[2]);  
+            random.read(is);
+            sessionId.read(is);
             
+            byte[] cipherSuiteLength = new byte[2];
+            readFully(is, cipherSuiteLength);
+            int len = (cipherSuiteLength[0] << 8) | cipherSuiteLength[1];
+            readFully(is, new byte[len]);
+
+            byte[] compressionMethodLength = new byte[1];
+            readFully(is, compressionMethodLength);
+            len =  compressionMethodLength[1];
+            readFully(is, new byte[len]);
+
+            byte[] extensionsLength = new byte[2];
+            readFully(is, extensionsLength);
+            len = (extensionsLength[0] << 8) | extensionsLength[1];
+            readFully(is, new byte[len]);
         }
 
         @Override
@@ -397,7 +420,7 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-
+            readFully(is, new byte[2]);
         }
 
         @Override
@@ -421,7 +444,7 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-
+            readFully(is, new byte[1]);
         }
 
         @Override
@@ -443,8 +466,13 @@ public final class Functions {
         }
 
         @Override
-        public void read(InputStream is) {
-            
+        public void read(InputStream is) throws IOException {
+            contentType.read(is);
+            readFully(is, new byte[2]);
+            byte[] length = new byte[2];
+            readFully(is, length);
+            int len = (length[0] << 8) | length[1];
+            readFully(is, new byte[len]);
         }
 
         @Override
@@ -516,6 +544,16 @@ public final class Functions {
         for(byte b: a)
             sb.append(String.format("%02x ", b & 0xff));
         return sb.toString();
+    }
+
+    static void readFully(InputStream is, byte[] data) throws IOException {
+        int n = 0, len = data.length, off = 0;
+        while (n < len) {
+            int count = is.read(data, off + n, len - n);
+            if (count < 0)
+                throw new EOFException();
+            n += count;
+        }
     }
 
 }
