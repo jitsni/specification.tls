@@ -32,8 +32,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class Functions {
-    
-
 
     private Functions() {
         // utility
@@ -44,19 +42,6 @@ public final class Functions {
         return "helloworld".getBytes();
     }
 
-    public static class Mapper extends FunctionMapperSpi.Reflective {
-
-        public Mapper() {
-            super(Functions.class);
-        }
-
-        @Override
-        public String getPrefixName() {
-            return "tls";
-        }
-
-    }
-    
     @Function
     public static byte[] clientHello() throws IOException {
         // ClientHello
@@ -82,7 +67,7 @@ public final class Functions {
 
     @Function
     public static byte[] serverHello() throws IOException {
-        
+
         // ServerHello body
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         ServerHello serverHello = new ServerHello(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA);
@@ -122,17 +107,28 @@ public final class Functions {
 
         return hello;
     }
-    
-    
-    
-    static interface Encoder {
+
+    public static class Mapper extends FunctionMapperSpi.Reflective {
+
+        public Mapper() {
+            super(Functions.class);
+        }
+
+        @Override
+        public String getPrefixName() {
+            return "tls";
+        }
+
+    }
+
+    interface Encoder {
         void write(OutputStream os) throws IOException;
     }
 
-    static interface Decoder {
+    interface Decoder {
         void read(InputStream is) throws IOException;
     }
-    
+
     static class Random implements Encoder, Decoder {
 
         @Override
@@ -146,18 +142,18 @@ public final class Functions {
 
             SecureRandom secureRandom = new SecureRandom();
             secureRandom.nextBytes(randomBytes);
-            
-            int gmtUnixTime = (int)(System.currentTimeMillis() / 1000);
-            randomBytes[0] = (byte)(gmtUnixTime >> 24);
-            randomBytes[1] = (byte)(gmtUnixTime >> 16);
-            randomBytes[2] = (byte)(gmtUnixTime >> 8);
-            randomBytes[3] = (byte)gmtUnixTime;
+
+            int gmtUnixTime = (int) (System.currentTimeMillis() / 1000);
+            randomBytes[0] = (byte) (gmtUnixTime >> 24);
+            randomBytes[1] = (byte) (gmtUnixTime >> 16);
+            randomBytes[2] = (byte) (gmtUnixTime >> 8);
+            randomBytes[3] = (byte) gmtUnixTime;
 
             os.write(randomBytes);
         }
     }
-    
-    
+
+
     static class Extension implements Encoder, Decoder {
 
 
@@ -171,16 +167,16 @@ public final class Functions {
 
         }
     }
-    
+
     static enum CompressionMethod implements Encoder, Decoder {
-        NULL((byte)0x00);
+        NULL((byte) 0x00);
 
         private final byte b1;
-        
+
         CompressionMethod(byte b1) {
             this.b1 = b1;
         }
-        
+
         @Override
         public void read(InputStream is) throws IOException {
             readFully(is, new byte[1]);
@@ -191,15 +187,15 @@ public final class Functions {
             os.write(b1);
         }
     }
-    
+
     static class SessionId implements Encoder, Decoder {
 
         final byte[] id;
-        
+
         SessionId() {
             this(false);
         }
-        
+
         SessionId(boolean generate) {
             id = generate ? new byte[32] : new byte[0];
             if (generate) {
@@ -253,7 +249,7 @@ public final class Functions {
 
             os.write((extensionList.size() >> 8) & 0xff);
             os.write(extensionList.size() & 0xff);
-            for(Extension extension : extensionList) {
+            for (Extension extension : extensionList) {
                 extension.write(os);
             }
 
@@ -286,7 +282,7 @@ public final class Functions {
         public void write(OutputStream os) throws IOException {
             List<byte[]> encoded = new ArrayList<>();
             int total = 0;
-            for(java.security.cert.Certificate cert : certs) {
+            for (java.security.cert.Certificate cert : certs) {
                 byte[] certEncodedData;
                 try {
                     certEncodedData = cert.getEncoded();
@@ -300,7 +296,7 @@ public final class Functions {
             os.write((total >> 16) & 0xff);
             os.write((total >> 8) & 0xff);
             os.write(total & 0xff);
-            for(byte[] data : encoded) {
+            for (byte[] data : encoded) {
                 int len = data.length;
                 os.write((len >> 16) & 0xff);
                 os.write((len >> 8) & 0xff);
@@ -319,7 +315,7 @@ public final class Functions {
         List<CompressionMethod> compressionMethodList = new ArrayList<>();
 
         List<Extension> extensionList = new ArrayList<>();
-        
+
         ClientHello() {
             compressionMethodList.add(CompressionMethod.NULL);
             Collections.addAll(cipherSuiteList, CipherSuite.values());
@@ -327,10 +323,10 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-            readFully(is, new byte[2]);  
+            readFully(is, new byte[2]);
             random.read(is);
             sessionId.read(is);
-            
+
             byte[] cipherSuiteLength = new byte[2];
             readFully(is, cipherSuiteLength);
             int len = (cipherSuiteLength[0] << 8) | cipherSuiteLength[1];
@@ -354,25 +350,25 @@ public final class Functions {
             sessionId.write(os);
 
             assert cipherSuiteList.size() > 1;
-            int cipherSuiteLength = cipherSuiteList.size()*2;
+            int cipherSuiteLength = cipherSuiteList.size() * 2;
             os.write((cipherSuiteLength >> 8) & 0xff);
             os.write(cipherSuiteLength & 0xff);
-            for(CipherSuite cipherSuite : cipherSuiteList) {
+            for (CipherSuite cipherSuite : cipherSuiteList) {
                 cipherSuite.write(os);
             }
 
             assert compressionMethodList.size() > 0;
             os.write(compressionMethodList.size());
-            for(CompressionMethod compressionMethod : compressionMethodList) {
+            for (CompressionMethod compressionMethod : compressionMethodList) {
                 compressionMethod.write(os);
             }
 
             os.write((extensionList.size() >> 8) & 0xff);
             os.write(extensionList.size() & 0xff);
-            for(Extension extension : extensionList) {
+            for (Extension extension : extensionList) {
                 extension.write(os);
             }
-            
+
         }
     }
 
@@ -429,15 +425,15 @@ public final class Functions {
             os.write(b1 & 0xff);
         }
     }
-    
-    enum ContentType implements Encoder, Decoder{
+
+    enum ContentType implements Encoder, Decoder {
         CHANGE_CIPHER_SPEC(20),
         ALERT(21),
         HANDSHAKE(22),
         APPLICATION_DATA(23);
-        
+
         private final int b;
-        
+
         private ContentType(int b) {
             this.b = b;
         }
@@ -452,13 +448,13 @@ public final class Functions {
             os.write(b);
         }
     }
-    
+
     static class TlsPlaintext implements Encoder, Decoder {
         final ContentType contentType;
         final byte[] version = new byte[] { 0x03, 0x03 };     // TLS v1.2
         final int length;
         final byte[] fragment;
-        
+
         TlsPlaintext(ContentType contentType, byte[] fragment, int length) {
             this.contentType = contentType;
             this.fragment = fragment;
@@ -498,7 +494,7 @@ public final class Functions {
         FINISHED(20);
 
         private final int b;
-        
+
         private HandshakeType(int b) {
             this.b = b;
         }
@@ -512,13 +508,13 @@ public final class Functions {
         public void write(OutputStream os) throws IOException {
             os.write(b);
         }
-        
+
     }
 
     static class Handshake implements Encoder, Decoder {
         final HandshakeType msgType;
         final byte[] body;
-        
+
         Handshake(HandshakeType msgType, byte[] body) {
             this.msgType = msgType;
             this.body = body;
@@ -526,7 +522,7 @@ public final class Functions {
 
         @Override
         public void read(InputStream is) throws IOException {
-            
+
         }
 
         @Override
@@ -541,8 +537,9 @@ public final class Functions {
 
     static String byteArrayToHex(byte[] a) {
         StringBuilder sb = new StringBuilder(a.length * 2);
-        for(byte b: a)
+        for (byte b: a) {
             sb.append(String.format("%02x ", b & 0xff));
+        }
         return sb.toString();
     }
 
@@ -550,8 +547,9 @@ public final class Functions {
         int n = 0, len = data.length, off = 0;
         while (n < len) {
             int count = is.read(data, off + n, len - n);
-            if (count < 0)
+            if (count < 0) {
                 throw new EOFException();
+            }
             n += count;
         }
     }
